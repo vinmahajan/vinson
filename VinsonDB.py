@@ -56,7 +56,8 @@ class DB:
     
         if document_name not in DB.doc_names:
             self.set_keys([])
-            file(f"{DB.database_name}/{document_name}.txt", mode="w", new_data='', json_=False)
+            self.save_document('')
+            # file(f"{DB.database_name}/{document_name}.txt", mode="w", new_data='', json_=False)
             print("created document: ", document_name)
         
         self.all_documents = file(init_file, json_=True)
@@ -80,6 +81,9 @@ class DB:
     def read_document(self) -> dict:
         return file(file_path=f"{DB.database_name}/{self.document_name}.txt")
     
+    def save_document(self, document):
+        file(file_path=f"{DB.database_name}/{self.document_name}.txt", mode="w", new_data=document)
+
     def get_key(self):
         return self.all_documents[self.document_name]
     
@@ -115,8 +119,8 @@ class DB:
         
         # Save the updated document back to storage if changes were made
         if updated:
-            # self.save_document(document)
-            file(file_path=f"{DB.database_name}/{self.document_name}.txt", mode="w", new_data=document)
+            self.save_document(document)
+            # file(file_path=f"{DB.database_name}/{self.document_name}.txt", mode="w", new_data=document)
         return "Update completed" if updated else "No matching items found"
 
     def update_fast(self, criteria, updates):
@@ -131,10 +135,23 @@ class DB:
                 item.update(updates)  # Efficient update with dict.update()
             
             # Save only if there were updates
-            file(file_path=f"{DB.database_name}/{self.document_name}.txt", mode="w", new_data=document)
-            # self.save_document(document)
+            self.save_document(document)  # Save the updated document
+            # file(file_path=f"{DB.database_name}/{self.document_name}.txt", mode="w", new_data=document)
             return f"Updated {len(matching_items)} items."
         
         return "No matching items found."
 
+    def delete_data(self, criteria):
+        document = self.read_document()  # Load the data
+        initial_length = len(document)
+        
+        # Filter out items that match the criteria
+        document = [item for item in document if not all(item.get(k) == v for k, v in criteria.items())]
+        
+        # Check if any items were removed
+        if len(document) < initial_length:
+            self.save_document(document)  # Save the updated document
+            return f"Deleted {initial_length - len(document)} items."
+        
+        return "No matching items found."
 
