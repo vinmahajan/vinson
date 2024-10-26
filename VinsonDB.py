@@ -2,51 +2,59 @@ import os
 import json
 
 
-def file(file_path, mode="r", new_data=None, json_=False) -> dict:
+def file(file_path, mode="r", new_data=None, is_json=False):
     try:
-        with open(file_path, mode) as file:
-            if mode == "r":
-                if json_:
+        if mode == "r":
+            with open(file_path, mode) as file:
+                if is_json:
                     return json.load(file)
                 else:
-                    # print(file.read())
+                    # Read and format non-JSON data as list of dicts/objects
                     data = f"""[{file.read().strip(',').replace("'", '"')}]"""
                     return json.loads(data)
-            
-            elif mode == "a":
-                if json_:
-                    pass
+
+        elif mode in {"a", "w"}:
+            with open(file_path, mode) as file:
+                if is_json:
+                    json.dump(new_data, file)
                 else:
-                    file.write(f"{new_data},")
-            elif mode == "w":
-                if not json_:
-                    data= str(new_data).strip('[]')+','
-                    file.write(data)
+                    # Append or write formatted data
+                    # data_str = str(new_data).strip("[]") + ","
+                    file.write(new_data)
 
     except Exception as e:
-        print(f"Error at file(): {e}")
+        print(f"Error in file(): {e}")
 
     return {}
 
 def update_init(file_path, primary_key, new_data):
+    # Ensure the file exists and contains a JSON object
     if not os.path.isfile(file_path):
         with open(file_path, "w") as file:
-            file.write("{}")
+            json.dump({}, file)
+
+    # Read, update, and save the JSON data
     with open(file_path, "r+") as file:
-        data = json.load(file)
+        try:
+            data = json.load(file)
+        except json.JSONDecodeError:
+            data = {}  # Initialize to empty if JSON is malformed
+
+        # Update data with primary_key entry
         data[primary_key] = new_data
         
-        # Seek to the beginning of the file to overwrite the existing content
+        # Write the updated JSON data back to the file
         file.seek(0)
-        
-        # Write the modified data back to the file
-        json.dump(data, file) #, indent=4)
+        json.dump(data, file)
+        file.truncate()  # Remove any remaining content if file was larger
+
+    return f"Updated data for key: {primary_key}"
 
 
 
 class DB:
     database_name = 'vinson.db'
-    doc_names = file(f"{database_name}/init.json", json_=True) or ">> No Documents"    
+    doc_names = file(f"{database_name}/init.json", is_json=True) or ">> No Documents"    
     os.makedirs(database_name, exist_ok=True)
     # doc_names =[os.path.splitext(entry.name)[0] for entry in os.scandir('vinson.db') if entry.is_file()]
 
@@ -56,11 +64,11 @@ class DB:
     
         if document_name not in DB.doc_names:
             self.set_keys([])
-            self.save_document('')
-            # file(f"{DB.database_name}/{document_name}.txt", mode="w", new_data='', json_=False)
+            # self.save_document('')
+            file(f"{DB.database_name}/{document_name}.txt", mode="w", new_data='')
             print("created document: ", document_name)
         
-        self.all_documents = file(init_file, json_=True)
+        self.all_documents = file(init_file, is_json=True)
 
 
     def set_keys(self, keys:list):
@@ -71,8 +79,9 @@ class DB:
         if not self.all_documents[self.document_name]:
             self.set_keys(list(data.keys()))
             self.all_documents[self.document_name] =list(data.keys())
+
         if list(data.keys()) == self.all_documents[self.document_name]:
-            file(f"{DB.database_name}/{self.document_name}.txt", mode="a", new_data = data, json_=False)
+            file(f"{DB.database_name}/{self.document_name}.txt", mode="a", new_data = f"{data},")
             return True
         else:
             raise Exception(f"Keys does not match, Please refer to document keys: {self.all_documents[self.document_name]}")
@@ -82,7 +91,8 @@ class DB:
         return file(file_path=f"{DB.database_name}/{self.document_name}.txt")
     
     def save_document(self, document):
-        file(file_path=f"{DB.database_name}/{self.document_name}.txt", mode="w", new_data=document)
+        data = str(document).strip('[]')+','
+        file(file_path=f"{DB.database_name}/{self.document_name}.txt", mode="w", new_data=data)
 
     def get_key(self):
         return self.all_documents[self.document_name]
@@ -155,3 +165,25 @@ class DB:
         
         return "No matching items found."
 
+
+    def delete_duplicates(self, unique_key=None):
+        document = self.read_document()  # Load the data
+        seen = set()
+        unique_data = []
+
+        # Loop through each item in the document
+        for item in document:
+            # Define what makes the item unique (based on unique_key or entire item)
+            identifier = item[unique_key] if unique_key else frozenset(item.items())
+            
+            # Add only the first occurrence of each unique identifier
+            if identifier not in seen:
+                seen.add(identifier)
+                unique_data.append(item)
+        
+        # Save the cleaned document back to storage if duplicates were removed
+        if len(unique_data) < len(document):
+            self.save_document(unique_data)
+            return f"Removed {len(document) - len(unique_data)} duplicates."
+
+        return "No duplicates found."
