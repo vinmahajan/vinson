@@ -20,10 +20,13 @@ def file(file_path, mode="r", new_data=None, json_=False) -> dict:
                     file.write(f"{new_data},")
             elif mode == "w":
                 if not json_:
-                    file.write('')
+                    data= str(new_data).strip('[]')+','
+                    file.write(data)
 
-    except:
-        return {}
+    except Exception as e:
+        print(f"Error at file(): {e}")
+
+    return {}
 
 def update_init(file_path, primary_key, new_data):
     if not os.path.isfile(file_path):
@@ -53,7 +56,7 @@ class DB:
     
         if document_name not in DB.doc_names:
             self.set_keys([])
-            file(f"{DB.database_name}/{document_name}.txt", mode="w", json_=False)
+            file(f"{DB.database_name}/{document_name}.txt", mode="w", new_data='', json_=False)
             print("created document: ", document_name)
         
         self.all_documents = file(init_file, json_=True)
@@ -96,4 +99,42 @@ class DB:
         result = [item for item in document if all(item.get(k) == v for k, v in kwargs.items())]
         return result if result else "Not found"
 
-    
+    def update(self, criteria, updates):
+        document = self.read_document()
+
+        # Flag to track if any item was updated
+        updated = False
+        
+        # Update each item in the document if it matches all criteria
+        for item in document:
+            if all(item.get(k) == v for k, v in criteria.items()):
+                # Apply all updates to the item
+                for update_key, update_value in updates.items():
+                    item[update_key] = update_value
+                updated = True
+        
+        # Save the updated document back to storage if changes were made
+        if updated:
+            # self.save_document(document)
+            file(file_path=f"{DB.database_name}/{self.document_name}.txt", mode="w", new_data=document)
+        return "Update completed" if updated else "No matching items found"
+
+    def update_fast(self, criteria, updates):
+        document = self.read_document()  # Load the data
+
+        # Use list comprehension to find items matching criteria
+        matching_items = [item for item in document if all(item.get(k) == v for k, v in criteria.items())]
+        
+        # Apply updates only if there are matching items
+        if matching_items:
+            for item in matching_items:
+                item.update(updates)  # Efficient update with dict.update()
+            
+            # Save only if there were updates
+            file(file_path=f"{DB.database_name}/{self.document_name}.txt", mode="w", new_data=document)
+            # self.save_document(document)
+            return f"Updated {len(matching_items)} items."
+        
+        return "No matching items found."
+
+
