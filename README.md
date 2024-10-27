@@ -11,8 +11,7 @@ Vinson Database is a lightweight, file-based Python database designed to manage 
 ## Installation
 To get started, clone the repository:
 ```bash
-pip install git+https://github.com/vinmahajan/vinson.git
-
+pip install vinson
 ```
 
 ## Usage Guide
