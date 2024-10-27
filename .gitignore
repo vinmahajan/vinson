@@ -6,3 +6,7 @@ documentation
 build
 dist
 vinson.egg-info
+.pypirc
+
+
+
