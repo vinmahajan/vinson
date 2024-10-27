@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "vinson"
+version = "0.1"
+authors = [
+  {name="Vinayak Mahajan", email="vinayakmahajan06@gmail.com"},
+]
+description="Vinson Database is a lightweight, file-based Python database."
+readme = "README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/vinmahajan/vinson"
+Issues = "https://github.com/vinmahajan/vinson/issues"
